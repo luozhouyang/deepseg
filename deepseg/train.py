@@ -2,10 +2,13 @@ import argparse
 import tensorflow as tf
 from . import data
 from .model import build_model
+import os
+import json
 
 
 def add_arguments(parser):
-    parser.add_argument("--config_file", type=str, default=None, help="Config file in JSON format.")
+    parser.add_argument("--config_file", type=str,
+                        default=None, help="Config file in JSON format.")
 
 
 def train(hparams):
@@ -24,7 +27,9 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     add_arguments(arg_parser)
     args, _ = arg_parser.parse_known_args()
-    config_file = args.config_file
-    hp = tf.contrib.training.HParams()
-    hp.parse_json(config_file)
+    if not os.path.exists(args.config_file):
+        raise FileNotFoundError("File %s does not exist." % args.config_file)
+    with open(args.config_file) as f:
+        hp = tf.contrib.training.HParams()
+        hp.parse_json(json.loads(f.read()))
     train(hp)
