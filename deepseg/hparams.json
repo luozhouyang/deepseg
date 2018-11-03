@@ -1,0 +1,15 @@
+{
+  "features_file": "testdata/features.txt",
+  "labels_file": "testdata/labels.txt",
+  "feature_vocab_file": "testdata/vocab.features.txt",
+  "label_vocab_file": "testdata/vocab.label.txt",
+  "max_len": 40,
+  "batch_size": 32,
+  "random_seed": null,
+  "buff_size": null,
+  "skip_count": 0,
+  "epochs": 5,
+  "validation_steps": 100,
+  "validation_features_file": null,
+  "validation_labels_file": null
+}
