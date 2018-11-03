@@ -1,10 +1,11 @@
-import tensorflow as tf
+import multiprocessing
 import os
 import re
-from . import utils
-import multiprocessing
 
-import keras
+import tensorflow as tf
+
+from deepseg import vocab
+from deepseg import utils
 
 __all__ = ["build_train_dataset", "build_validation_dataset",
            "generate_training_files", "generate_training_files_parallel"]
@@ -75,7 +76,7 @@ def _build_dataset(feat_vocab_table,
                    random_seed,
                    num_parallel_call=multiprocessing.cpu_count(),
                    buff_size=None,
-                   skip_count=None):
+                   skip_count=0):
     if not buff_size:
         buff_size = batch_size * 1024
     dataset = tf.data.Dataset.zip((feat_dataset, label_dataset))
@@ -86,24 +87,38 @@ def _build_dataset(feat_vocab_table,
     dataset = dataset.shuffle(buff_size, random_seed, True)
 
     # split data
-    dataset = dataset.map(lambda src, tgt: (
-        tf.string_split([src], ",").values, tf.string_split([tgt], ",").values),
-                          num_parallel_calls=num_parallel_call).prefetch(buff_size)
+    dataset = dataset.map(
+        lambda src, tgt: (
+            tf.string_split([src], ",").values,
+            tf.string_split([tgt], ",").values),
+        num_parallel_calls=num_parallel_call).prefetch(buff_size)
+
+    # filter empty data
+    dataset = dataset.filter(
+        lambda src, tgt: tf.logical_and(tf.size(src) > 0, tf.size(tgt) > 0)).prefetch(buff_size)
+
+    if max_len:
+        dataset = dataset.map(
+            lambda src, tgt: (src[:max_len], tgt[:max_len]),
+            num_parallel_calls=num_parallel_call).prefetch(buff_size)
 
     # cast string to ids
     dataset = dataset.map(lambda src, tgt: (
-        tf.cast(feat_vocab_table.lookup(src), tf.int32),
-        tf.cast(label_vocab_table.lookup(tgt), tf.int32)),
+        tf.cast(feat_vocab_table.lookup(src), tf.int64),
+        tf.cast(label_vocab_table.lookup(tgt), tf.int64)),
                           num_parallel_calls=num_parallel_call).prefetch(buff_size)
+
+    def padding_func(x):
+        return x.padded_batch(
+            batch_size,
+            padded_shapes=(tf.TensorShape([None]),
+                           tf.TensorShape([None])),
+            padding_values=(tf.cast(feat_vocab_table.lookup(tf.constant(vocab.UNK)), tf.int64),
+                            tf.cast(label_vocab_table.lookup(tf.constant(vocab.LABEL_S)), tf.int64)))
 
     # padding
-    dataset = dataset.map(lambda src, tgt: (
-        keras.preprocessing.sequence.pad_sequences(
-            [src], maxlen=max_len, padding="post", truncating="post", value=0)[0],
-        keras.preprocessing.sequence.pad_sequences(
-            [tgt], maxlen=max_len, padding="post", truncating="post", value=0)[0]),
-                          num_parallel_calls=num_parallel_call).prefetch(buff_size)
-
+    dataset = padding_func(dataset)
+    dataset = dataset.repeat()
     return dataset
 
 
@@ -117,11 +132,35 @@ def generate_training_files_parallel(seg_file,
     Args:
         seg_file: A tagged(segmented) file.
         output_feature_file: A file to save features
-        output_lable_file: A file to save labels
+        output_label_file: A file to save labels
         parallel: The parallel number of multiprocessing
         file_parts: The number of parts the tagged file will be split
     """
-    pass
+    parts = utils.split_file(seg_file, file_parts, "part")
+    pool = multiprocessing.Pool(parallel)
+    jobs = []
+    features_files, labels_files = [], []
+    for file in parts:
+        prefix = str(file)[0:str(file).rfind(os.sep)]
+        name = str(file).split(os.sep)[-1]
+        feat_file = os.path.join(prefix, name.replace("part", "feature"))
+        label_file = os.path.join(prefix, name.replace("part", "label"))
+        jobs.append(pool.apply_async(generate_training_files, (file, feat_file, label_file)))
+        features_files.append(feat_file)
+        labels_files.append(label_file)
+
+    for job in jobs:
+        job.get()
+
+    # TODO(luozhouyang) Fix: if features becomes empty after processing then the tags may mismatch
+    # concat each part to s single file
+    utils.concat_files(sorted(features_files), output_feature_file)
+    utils.concat_files(sorted(labels_files), output_label_file)
+
+    # remove tmp files
+    f0 = features_files[0]
+    d = str(f0)[0:str(f0).rindex(os.sep)]
+    utils.remove_dir(d)
 
 
 def generate_training_files(seg_file, output_feature_file, output_label_file):
@@ -130,7 +169,7 @@ def generate_training_files(seg_file, output_feature_file, output_label_file):
     Args:
         seg_file: A tagged(segmented) file
         output_feature_file: A file to save features
-        output_label_file: A file to save lables
+        output_label_file: A file to save labels
     """
     utils.check_file_exists(seg_file)
 
