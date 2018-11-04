@@ -38,7 +38,7 @@ def split_file(file, parts=128, workdir=None, prefix="part"):
         return [os.path.abspath(file)]
     lines = count_file_lines(file)
     m = lines % parts
-    lines_each_part = 0 if m == 0 else int((lines - m) / (parts - 1))
+    lines_each_part = (lines // parts) if m == 0 else int((lines - m) / (parts - 1))
     part_files = []
     with open(file, mode="rt", encoding="utf8", buffering=8192) as r:
         for i in range(parts):
