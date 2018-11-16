@@ -1,4 +1,7 @@
-class AbstractModel(object):
+import abc
+
+
+class AbstractModel(abc.ABC):
     """Model interface."""
 
     def input_fn(self, params):
@@ -12,15 +15,15 @@ class AbstractModel(object):
         """
         raise NotImplementedError()
 
-    def model_fn(self, train_hooks=None, eval_hooks=None):
+    def model_fn(self, features, labels, mode, params, config):
         """Build model fn for estimator.
 
         Args:
-            train_hooks: Hooks for training
-            eval_hooks: Hooks for evaluation
-
-        Returns:
-            A model fn for estimator.
+            features: Features data
+            labels: Labels data
+            mode: Mode
+            params: Hyper params
+            config: Run config
         """
         raise NotImplementedError()
 
