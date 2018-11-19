@@ -10,29 +10,52 @@ class BaseModel(AbstractModel):
 
     def input_fn(self, params, mode=tf.estimator.ModeKeys.TRAIN):
         def generator_fn(src, tag):
-            with open(src, mode="r", encoding="utf8") as fsrc, open(tag, mode="r", encoding="utf8") as ftag:
-                for src_line, tag_line in zip(fsrc, ftag):
-                    yield parse_fn(src_line, tag_line)
+            if tag is None:
+                with open(src, mode="rt", encoding="utf8") as fsrc:
+                    for src_line in fsrc:
+                        yield parse_fn(src_line=src_line, tag_line=None)
+            else:
+                with open(src, mode="rt", encoding="utf8") as fsrc, open(tag, mode="rt", encoding="utf8") as ftag:
+                    for src_line, tag_line in zip(fsrc, ftag):
+                        yield parse_fn(src_line, tag_line)
 
         def parse_fn(src_line, tag_line):
             words = [w.encode() for w in src_line.strip("\n").strip().split()]
-            tags = [t.encode() for t in tag_line.strip("\n").strip().split()]
-            assert len(words) == len(tags)
+            if tag_line is None:
+                tags = None
+            else:
+                tags = [t.encode() for t in tag_line.strip("\n").strip().split()]
+                assert len(words) == len(tags)
             return ((words, len(words)), tags)
 
-        src_file = params['train_src_file'] if mode == tf.estimator.ModeKeys.TRAIN else params['eval_src_file']
-        tag_file = params['train_tag_file'] if mode == tf.estimator.ModeKeys.TRAIN else params['eval_tag_file']
-        if not src_file or not tag_file:
-            raise ValueError("src file and tag file must be provided.")
+        src_file, tag_file = None, None
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            src_file = params['train_src_file']
+            tag_file = params['train_tag_file']
+        elif mode == tf.estimator.ModeKeys.EVAL:
+            src_file = params['eval_src_file']
+            tag_file = params['eval_tag_file']
+        elif mode == tf.estimator.ModeKeys.PREDICT:
+            src_file = params['predict_src_file']
+            tag_file = None
+        if mode != tf.estimator.ModeKeys.PREDICT:
+            if not src_file or not tag_file:
+                raise ValueError("src file and tag file must be provided.")
 
-        padded_shapes = (([None], ()), [None])
-        padding_values = ((params['pad'], 0), params['oov_tag'])
-        data_types = ((tf.string, tf.int32), tf.string)
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            padded_shapes = (([None], ()), [None])
+            padding_values = ((params['pad'], 0), [None])
+            data_types = ((tf.string, tf.int32), None)
+
+        else:
+            padded_shapes = (([None], ()), [None])
+            padding_values = ((params['pad'], 0), params['oov_tag'])
+            data_types = ((tf.string, tf.int32), tf.string)
 
         dataset = tf.data.Dataset.from_generator(
             functools.partial(generator_fn, src_file, tag_file),
             output_shapes=padded_shapes,
-            output_types=data_types, )
+            output_types=data_types)
         if params['shuffle']:
             dataset = dataset.shuffle(buffer_size=params['buff_size'],
                                       reshuffle_each_iteration=params['reshuffle_each_iteration'])
@@ -47,7 +70,7 @@ class BaseModel(AbstractModel):
     def model_fn(self, features, labels, mode, params, config):
         words, nwords = features
         # a UNK token should placed in the first row in vocab file
-        words_str2idx = lookup_ops.index_table_from_file(params['src_vocab'], num_oov_buckets=0)
+        words_str2idx = lookup_ops.index_table_from_file(params['src_vocab'], default_value=0)
         words_ids = words_str2idx.lookup(words)
 
         training = mode == tf.estimator.ModeKeys.TRAIN
@@ -65,7 +88,7 @@ class BaseModel(AbstractModel):
             inputs = tf.transpose(embedding, perm=[1, 0, 2])
             lstm_fw = tf.nn.rnn_cell.LSTMCell(params['lstm_size'])
             lstm_bw = tf.nn.rnn_cell.LSTMCell(params['lstm_size'])
-            (output_fw, output_bw), (state_fw, state_bw) = tf.contrib.rnn.bidirectional_dynamic_rnn(
+            (output_fw, output_bw), (state_fw, state_bw) = tf.nn.bidirectional_dynamic_rnn(
                 cell_fw=lstm_fw,
                 cell_bw=lstm_bw,
                 inputs=inputs,
@@ -113,7 +136,7 @@ class BaseModel(AbstractModel):
         raise NotImplementedError()
 
     def build_predictions(self, predict_ids, params):
-        tags_idx2str = lookup_ops.index_to_string_table_from_file(params['tags_vocab'])
+        tags_idx2str = lookup_ops.index_to_string_table_from_file(params['tag_vocab'], default_value=params['oov_tag'])
         predict_tags = tags_idx2str.lookup(predict_ids)
         predictions = {
             "predict_ids": predict_ids,
@@ -122,7 +145,7 @@ class BaseModel(AbstractModel):
         return predictions
 
     def build_eval_metrics(self, predict_ids, labels, nwords, params):
-        tags_str2idx = lookup_ops.index_table_from_file(params['tags_vocab'])
+        tags_str2idx = lookup_ops.index_table_from_file(params['tag_vocab'], default_value=0)
         actual_ids = tags_str2idx.lookup(labels)
         weights = tf.sequence_mask(nwords)
         metrics = {
