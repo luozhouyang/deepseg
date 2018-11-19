@@ -1,14 +1,17 @@
 import abc
 
+import tensorflow as tf
+
 
 class AbstractModel(abc.ABC):
     """Model interface."""
 
-    def input_fn(self, params):
+    def input_fn(self, params, mode=tf.estimator.ModeKeys.TRAIN):
         """Input fn for estimator.
 
         Args:
             params: A dict, storing hyper params
+            mode: A constant, tf.estimator.ModeKeys.TRAIN or tf.estimator.ModeKeys.EVAL
 
         Returns:
             A instance of tf.data.Dataset.

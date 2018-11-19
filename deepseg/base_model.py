@@ -8,7 +8,7 @@ from .abstract_model import AbstractModel
 
 class BaseModel(AbstractModel):
 
-    def input_fn(self, params):
+    def input_fn(self, params, mode=tf.estimator.ModeKeys.TRAIN):
         def generator_fn(src, tag):
             with open(src, mode="r", encoding="utf8") as fsrc, open(tag, mode="r", encoding="utf8") as ftag:
                 for src_line, tag_line in zip(fsrc, ftag):
@@ -20,8 +20,8 @@ class BaseModel(AbstractModel):
             assert len(words) == len(tags)
             return ((words, len(words)), tags)
 
-        src_file = params['src_file']
-        tag_file = params['tag_file']
+        src_file = params['train_src_file'] if mode == tf.estimator.ModeKeys.TRAIN else params['eval_src_file']
+        tag_file = params['train_tag_file'] if mode == tf.estimator.ModeKeys.TRAIN else params['eval_tag_file']
         if not src_file or not tag_file:
             raise ValueError("src file and tag file must be provided.")
 
