@@ -1,7 +1,10 @@
 import tensorflow as tf
 import os
 
-__all__ = ["build_dataset", "build_train_dataset", "build_eval_dataset", "build_predict_dataset"]
+__all__ = ["build_dataset",
+           "build_train_dataset",
+           "build_eval_dataset",
+           "build_predict_dataset"]
 
 
 def build_dataset(params, mode):
@@ -31,7 +34,8 @@ def _build_dataset(src_dataset, tag_dataset, params):
         lambda src, tag: (
             tf.string_split([src], delimiter=",").values,
             tf.string_split([tag], delimiter=",").values),
-        num_parallel_calls=4).prefetch(params['buff_size'])
+        num_parallel_calls=params['num_parallel_call']
+    ).prefetch(params['buff_size'])
 
     dataset = dataset.filter(
         lambda src, tag: tf.logical_and(tf.size(src) > 0, tf.size(tag) > 0))
@@ -42,11 +46,14 @@ def _build_dataset(src_dataset, tag_dataset, params):
         dataset = dataset.map(
             lambda src, tag: (src[:params['max_src_len']],
                               tag[:params['max_src_len']]),
-            num_parallel_calls=params['num_parallel_call']).prefetch(params['buff_size'])
+            num_parallel_calls=params['num_parallel_call']
+        ).prefetch(params['buff_size'])
 
     dataset = dataset.map(
         lambda src, tag: (src, tf.size(src), tag),
-        num_parallel_calls=params['num_parallel_call']).prefetch(params['buff_size'])
+        num_parallel_calls=params['num_parallel_call']
+    ).prefetch(params['buff_size'])
+
     dataset = dataset.padded_batch(
         batch_size=params.get('batch_size', 32),
         padded_shapes=(
@@ -57,9 +64,12 @@ def _build_dataset(src_dataset, tag_dataset, params):
             tf.constant(params['pad'], dtype=tf.string),
             0,
             tf.constant(params['oov_tag'], dtype=tf.string)))
+
     dataset = dataset.map(
         lambda src, src_len, tag: ((src, src_len), tag),
-        num_parallel_calls=params['num_parallel_call']).prefetch(params['buff_size'])
+        num_parallel_calls=params['num_parallel_call']
+    ).prefetch(params['buff_size'])
+
     return dataset
 
 
@@ -96,16 +106,23 @@ def build_predict_dataset(params):
     dataset = tf.data.TextLineDataset(src_file)
     if params['skip_count'] > 0:
         dataset = dataset.skip(params['skip_count'])
+
     dataset = dataset.map(
         lambda src: tf.string_split([src], delimiter=",").values,
-        num_parallel_calls=params['num_parallel_call']).prefetch(params['buff_size'])
+        num_parallel_calls=params['num_parallel_call']
+    ).prefetch(params['buff_size'])
+
     dataset = dataset.map(
         lambda src: (src, tf.size(src)),
-        num_parallel_calls=params['num_parallel_call']).prefetch(params['buff_size'])
+        num_parallel_calls=params['num_parallel_call']
+    ).prefetch(params['buff_size'])
+
     dataset = dataset.padded_batch(
         params.get('batch_size', 32),
-        padded_shapes=(tf.TensorShape([None]),
-                       tf.TensorShape([])),
-        padding_values=(tf.constant(params['pad'], dtype=tf.string),
-                        0))
+        padded_shapes=(
+            tf.TensorShape([None]),
+            tf.TensorShape([])),
+        padding_values=(
+            tf.constant(params['pad'], dtype=tf.string),
+            0))
     return dataset

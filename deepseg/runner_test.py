@@ -7,8 +7,10 @@ from .runner import Runner
 
 class RunnerTest(tf.test.TestCase):
 
-    def _buildParams(self):
-        testdata_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../testdata"))
+    @staticmethod
+    def _buildParams():
+        testdata_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../testdata"))
         params = {
             "model_dir": os.path.join(testdata_dir, "model"),
             "train_src_file": os.path.join(testdata_dir, "feature.txt"),
@@ -33,13 +35,30 @@ class RunnerTest(tf.test.TestCase):
             "save_ckpt_steps": 100,
             "keep_ckpt_max": 5,
             "log_step_count_steps": 10,
-            "num_tags": 5
+            "num_tags": 5,
+            "num_parallel_call": 4,
+            "max_src_len": 40,
+            "random_seed": 1000,
+            "skip_count": 0
         }
         return params
 
     def testTrain(self):
         r = Runner(self._buildParams())
         r.train()
+
+    def testEval(self):
+        r = Runner(self._buildParams())
+        r.eval()
+
+    def testTrainAndEval(self):
+        r = Runner(self._buildParams())
+        r.train_and_eval()
+
+    def testPredict(self):
+        r = Runner(self._buildParams())
+        predictions = r.predict()
+        print(predictions['predict_tags'])
 
 
 if __name__ == "__main__":
