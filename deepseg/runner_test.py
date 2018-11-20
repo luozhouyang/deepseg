@@ -58,7 +58,9 @@ class RunnerTest(tf.test.TestCase):
     def testPredict(self):
         r = Runner(self._buildParams())
         predictions = r.predict()
-        print(predictions['predict_tags'])
+        for i, p in enumerate(predictions):
+            print(i, p['predict_ids'])
+            print(i, p['predict_tags'])
 
 
 if __name__ == "__main__":

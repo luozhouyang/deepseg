@@ -1,6 +1,8 @@
-import tensorflow as tf
-from .bilstm_crf_model import BiLSTMCRFModel
 import functools
+
+import tensorflow as tf
+
+from .bilstm_crf_model import BiLSTMCRFModel
 
 
 class Runner(object):
@@ -41,11 +43,11 @@ class Runner(object):
             input_fn=input_fn,
             hooks=train_hooks,
             max_steps=1000)
-        for i in range(10):
-            self.estimator.train(
-                train_spec.input_fn,
-                train_spec.hooks,
-                max_steps=train_spec.max_steps)
+
+        self.estimator.train(
+            train_spec.input_fn,
+            train_spec.hooks,
+            max_steps=train_spec.max_steps)
 
     def eval(self):
         input_fn = functools.partial(

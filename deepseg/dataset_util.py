@@ -1,5 +1,6 @@
-import tensorflow as tf
 import os
+
+import tensorflow as tf
 
 __all__ = ["build_dataset",
            "build_train_dataset",
@@ -83,7 +84,12 @@ def build_train_dataset(params):
     src_dataset = tf.data.TextLineDataset(src_file)
     tag_dataset = tf.data.TextLineDataset(tag_file)
 
-    return _build_dataset(src_dataset, tag_dataset, params)
+    dataset = _build_dataset(src_dataset, tag_dataset, params)
+
+    iterator = dataset.make_one_shot_iterator()
+    (src, src_len), tag = iterator.get_next()
+
+    return (src, src_len), tag
 
 
 def build_eval_dataset(params):
@@ -96,7 +102,11 @@ def build_eval_dataset(params):
     src_dataset = tf.data.TextLineDataset(src_file)
     tag_dataset = tf.data.TextLineDataset(tag_file)
 
-    return _build_dataset(src_dataset, tag_dataset, params)
+    dataset = _build_dataset(src_dataset, tag_dataset, params)
+    iterator = dataset.make_one_shot_iterator()
+    (src, src_len), tag = iterator.get_next()
+
+    return (src, src_len), tag
 
 
 def build_predict_dataset(params):
@@ -125,4 +135,8 @@ def build_predict_dataset(params):
         padding_values=(
             tf.constant(params['pad'], dtype=tf.string),
             0))
-    return dataset
+
+    iterator = dataset.make_one_shot_iterator()
+    (src, src_len) = iterator.get_next()
+
+    return (src, src_len), None
