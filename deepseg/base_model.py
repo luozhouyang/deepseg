@@ -54,9 +54,13 @@ class BaseModel(AbstractModel):
         if mode == tf.estimator.ModeKeys.PREDICT:
             predictions = self.build_predictions(predict_ids, params)
             prediction_hooks = []
+            export_outputs = {
+                'export_outputs': tf.estimator.export.PredictOutput(predictions)
+            }
             return tf.estimator.EstimatorSpec(
                 mode=mode,
                 predictions=predictions,
+                export_outputs=export_outputs,
                 prediction_hooks=prediction_hooks)
 
         loss = self.compute_loss(logits, labels, nwords, params)
