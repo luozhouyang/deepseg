@@ -1,13 +1,29 @@
+# Copyright 2018 luozhouyang.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 import functools
+import os
 
 import tensorflow as tf
 
 from .bilstm_crf_model import BiLSTMCRFModel
 
-from tensorflow.contrib.learn.python.learn.utils import input_fn_utils
 
-
+# TODO(luozhouyang) Add hooks
 class Runner(object):
+    """Train, evaluate, predict or export the model."""
 
     def __init__(self, params):
         self.params = params
@@ -18,7 +34,7 @@ class Runner(object):
             log_device_placement=False,
             gpu_options=tf.GPUOptions(allow_growth=True))
 
-        seed = None
+        seed = self.params['random_seed']
 
         run_config = tf.estimator.RunConfig(
             model_dir=self.params['model_dir'],
@@ -63,6 +79,7 @@ class Runner(object):
             eval_spec.input_fn, hooks=eval_spec.hooks)
 
     def predict(self):
+        """Predict from a file specified in params['predict_src_file']."""
         input_fn = functools.partial(
             self.model.input_fn,
             params=self.params,
@@ -94,6 +111,8 @@ class Runner(object):
             eval_spec=eval_spec)
 
     def export(self):
+        """Export model as a saved model."""
+
         def receiver_fn():
             receiver_tensors = {
                 "inputs": tf.placeholder(dtype=tf.string, shape=(None, None)),
@@ -106,5 +125,5 @@ class Runner(object):
                 receiver_tensors=receiver_tensors)
 
         self.estimator.export_savedmodel(
-            export_dir_base=self.params['model_dir'],
+            export_dir_base=os.path.join(self.params['model_dir'], "export"),
             serving_input_receiver_fn=receiver_fn)

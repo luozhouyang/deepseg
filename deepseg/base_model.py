@@ -1,3 +1,18 @@
+# Copyright 2018 luozhouyang.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 import tensorflow as tf
 from tensorflow.python.ops import lookup_ops
 
@@ -6,6 +21,7 @@ from .abstract_model import AbstractModel
 
 
 class BaseModel(AbstractModel):
+    """Base model. Word embedding + BiLSTM."""
 
     def input_fn(self, params, mode=tf.estimator.ModeKeys.TRAIN):
         return dataset_util.build_dataset(params, mode)
@@ -32,6 +48,7 @@ class BaseModel(AbstractModel):
 
         # BiLSTM
         with tf.variable_scope("bilstm", reuse=tf.AUTO_REUSE):
+            # transpose embedding for time major mode
             inputs = tf.transpose(embedding, perm=[1, 0, 2])
             lstm_fw = tf.nn.rnn_cell.LSTMCell(params['lstm_size'])
             lstm_bw = tf.nn.rnn_cell.LSTMCell(params['lstm_size'])
@@ -51,7 +68,6 @@ class BaseModel(AbstractModel):
         logits, predict_ids = self.decode(output, nwords, params)
 
         # TODO(luozhouyang) Add hooks
-
         if mode == tf.estimator.ModeKeys.PREDICT:
             predictions = self.build_predictions(predict_ids, params)
             prediction_hooks = []
@@ -118,7 +134,7 @@ class BaseModel(AbstractModel):
             return opt.minimize(loss, global_step=global_step)
         if params['optimizer'].lower() == 'momentum':
             opt = tf.train.MomentumOptimizer(
-                learning_rate=params['learning_rate'],
+                learning_rate=params.get('learning_rate', 1.0),
                 momentum=params['momentum'])
             return opt.minimize(loss, global_step=global_step)
         if params['optimizer'].lower() == 'adadelta':
