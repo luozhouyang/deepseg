@@ -1,3 +1,3 @@
 # deepseg
 
-Chinese word segmentation using BiLSTM + CRF in Tensorflow(Keras).
+Chinese word segmentation in tensorflow.
