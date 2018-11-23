@@ -11,7 +11,8 @@ class BaseModel(AbstractModel):
         return dataset_util.build_dataset(params, mode)
 
     def model_fn(self, features, labels, mode, params, config):
-        (words, nwords) = features
+        words = features['inputs']
+        nwords = features['inputs_length']
         # a UNK token should placed in the first row in vocab file
         words_str2idx = lookup_ops.index_table_from_file(
             params['src_vocab'], default_value=0)

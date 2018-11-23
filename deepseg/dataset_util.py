@@ -88,8 +88,12 @@ def build_train_dataset(params):
 
     iterator = dataset.make_one_shot_iterator()
     (src, src_len), tag = iterator.get_next()
+    features = {
+        "inputs": src,
+        "inputs_length": src_len
+    }
 
-    return (src, src_len), tag
+    return features, tag
 
 
 def build_eval_dataset(params):
@@ -105,8 +109,12 @@ def build_eval_dataset(params):
     dataset = _build_dataset(src_dataset, tag_dataset, params)
     iterator = dataset.make_one_shot_iterator()
     (src, src_len), tag = iterator.get_next()
+    features = {
+        "inputs": src,
+        "inputs_length": src_len
+    }
 
-    return (src, src_len), tag
+    return features, tag
 
 
 def build_predict_dataset(params):
@@ -138,5 +146,9 @@ def build_predict_dataset(params):
 
     iterator = dataset.make_one_shot_iterator()
     (src, src_len) = iterator.get_next()
+    features = {
+        "inputs": src,
+        "inputs_length": src_len
+    }
 
-    return (src, src_len), None
+    return features, None

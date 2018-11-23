@@ -62,6 +62,11 @@ class RunnerTest(tf.test.TestCase):
             print(i, p['predict_ids'])
             print(i, p['predict_tags'])
 
+    def testExport(self):
+        r = Runner(self._buildParams())
+        r.export()
+
 
 if __name__ == "__main__":
+    tf.logging.set_verbosity(tf.logging.WARN)
     tf.test.main()

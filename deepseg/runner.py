@@ -4,6 +4,8 @@ import tensorflow as tf
 
 from .bilstm_crf_model import BiLSTMCRFModel
 
+from tensorflow.contrib.learn.python.learn.utils import input_fn_utils
+
 
 class Runner(object):
 
@@ -13,7 +15,7 @@ class Runner(object):
 
         sess_config = tf.ConfigProto(
             allow_soft_placement=True,
-            log_device_placement=True,
+            log_device_placement=False,
             gpu_options=tf.GPUOptions(allow_growth=True))
 
         seed = None
@@ -92,10 +94,17 @@ class Runner(object):
             eval_spec=eval_spec)
 
     def export(self):
-        def receive_fn():
-            features = {
+        def receiver_fn():
+            receiver_tensors = {
                 "inputs": tf.placeholder(dtype=tf.string, shape=(None, None)),
-                "inputs_length": tf.placeholder(dtype=tf.int64, shape=(None,))
+                "inputs_length": tf.placeholder(dtype=tf.int32, shape=(None))
             }
 
-        self.estimator.export_saved_model()
+            features = receiver_tensors.copy()
+            return tf.estimator.export.ServingInputReceiver(
+                features=features,
+                receiver_tensors=receiver_tensors)
+
+        self.estimator.export_savedmodel(
+            export_dir_base=self.params['model_dir'],
+            serving_input_receiver_fn=receiver_fn)
