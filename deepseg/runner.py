@@ -13,11 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 
+import argparse
 import functools
+import json
 import os
 
 import tensorflow as tf
 
+from . import utils
 from .bilstm_crf_model import BiLSTMCRFModel
 
 
@@ -127,3 +130,49 @@ class Runner(object):
         self.estimator.export_savedmodel(
             export_dir_base=os.path.join(self.params['model_dir'], "export"),
             serving_input_receiver_fn=receiver_fn)
+
+
+def check_predictions_files(params):
+    if not os.path.exists(params['predict_src_file']):
+        raise ValueError("predict_src_file must be provided in predict mode!")
+    if not os.path.exists(params['predict_tag_file']):
+        raise ValueError("predict_tag_file must be provided in predict mode!")
+
+
+def check_vocab_files(params):
+    utils.check_src_vocab_file(params)
+    utils.check_tag_vocab_file(params)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--params_file", type=str, default="hparams.json",
+                        required=True,
+                        help="The params configuration in JSON format.")
+    parser.add_argument("--mode", type=str, default="train_and_eval",
+                        choices=["train", "eval",
+                                 "train_and_eval", "predict", "export"],
+                        help="run mode.")
+
+    args, _ = parser.parse_known_args()
+    config_file = args.params_file
+    with open(config_file, mode="rt", encoding="utf8", buffering=8192) as f:
+        params = json.load(f)
+
+    check_vocab_files(params)
+    runner = Runner(params=params)
+
+    mode = args.mode
+    if mode == "train":
+        runner.train()
+    elif mode == "eval":
+        runner.eval()
+    elif mode == "train_and_eval":
+        runner.train_and_eval()
+    elif mode == "predict":
+        check_predictions_files(params)
+        runner.predict()
+    elif mode == "export":
+        runner.export()
+    else:
+        raise ValueError("Unknown mode: %s" % mode)
