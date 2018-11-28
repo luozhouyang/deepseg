@@ -18,6 +18,7 @@ import os
 import tensorflow as tf
 
 from .runner import Runner
+from . import utils
 
 
 class RunnerTest(tf.test.TestCase):
@@ -42,7 +43,7 @@ class RunnerTest(tf.test.TestCase):
             "reshuffle_each_iteration": True,
             "repeat": 5,
             "batch_size": 4,
-            "vocab_size": 17,
+            "vocab_size": 18,
             "embedding_size": 256,
             "dropout": 0.5,
             "lstm_size": 256,
@@ -73,9 +74,16 @@ class RunnerTest(tf.test.TestCase):
     def testPredict(self):
         r = Runner(self._buildParams())
         predictions = r.predict()
-        for i, p in enumerate(predictions):
-            print(i, p['predict_ids'])
-            print(i, p['predict_tags'])
+        testdata_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../testdata"))
+        tags_file = os.path.join(testdata_dir, "tags_output")
+        with open(tags_file, mode="wt", encoding="utf8", buffering=8192) as f:
+            for i, p in enumerate(predictions):
+                print(i, p['predict_ids'])
+                print(i, p['predict_tags'])
+                f.write(
+                    utils.convert_prediction_tags_to_string(p['predict_tags']))
+                f.write("\n")
 
     def testExport(self):
         r = Runner(self._buildParams())

@@ -67,3 +67,39 @@ def check_vocab_file(file, special_tokens):
         for v in vocabs:
             f.write(v + "\n")
     return len(vocabs)
+
+
+def convert_prediction_tags_to_string(prediction_tags):
+    """Convert np.ndarray prediction_tags of output of prediction to string.
+
+    Args:
+        prediction_tags: A np.ndarray object, value of prediction['prediction_tags']
+
+    Returns:
+        A list of string predictions tags
+    """
+
+    return " ".join([t.decode('utf8') for t in prediction_tags])
+
+
+def segment_by_tag(sequences, tags):
+    """Segment string sequence by it's tags.
+
+    Args:
+        sequences: A two dimension source string list
+        tags: A two dimension tag string list
+
+    Returns:
+        A list of segmented string.
+    """
+    results = []
+    for seq, tag in zip(sequences, tags):
+        if len(seq) != len(tag):
+            raise ValueError("The length of sequence and tags are different!")
+        result = []
+        for i in range(len(tag)):
+            result.append(seq[i])
+            if tag[i] == "E" or tag[i] == "S":
+                result.append(" ")
+        results.append(result)
+    return results

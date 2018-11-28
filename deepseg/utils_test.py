@@ -37,6 +37,19 @@ class UtilsTest(tf.test.TestCase):
         params = self.getParams()
         utils.check_src_vocab_file(params)
 
+    def testSegmentByTags(self):
+        sequence = [
+            ['上', '海', '市', '浦', '东', '新', '区', '张', '东', '路', '1387', '号'],
+            ['上', '海', '市', '浦', '东', '新', '区', '张', '衡', '路', '333', '号']
+        ]
+        tags = [
+            ['B', 'M', 'E', 'B', 'M', 'M', 'E', 'B', 'M', 'E', 'S', 'S'],
+            ['B', 'M', 'E', 'B', 'M', 'M', 'E', 'B', 'M', 'E', 'S', 'S']
+        ]
+
+        for result in utils.segment_by_tag(sequence, tags):
+            print("".join(result))
+
 
 if __name__ == "__main__":
     tf.test.main()
