@@ -22,6 +22,7 @@ import tensorflow as tf
 
 from . import utils
 from .bilstm_crf_model import BiLSTMCRFModel
+from .hooks import InitHook
 
 
 # TODO(luozhouyang) Add hooks
@@ -39,6 +40,8 @@ class Runner(object):
 
         seed = self.params['random_seed']
 
+        # strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=0)
+
         run_config = tf.estimator.RunConfig(
             model_dir=self.params['model_dir'],
             session_config=sess_config,
@@ -46,7 +49,8 @@ class Runner(object):
             save_checkpoints_secs=None,
             save_checkpoints_steps=params['save_ckpt_steps'],
             keep_checkpoint_max=params['keep_ckpt_max'],
-            log_step_count_steps=params['log_step_count_steps'])
+            log_step_count_steps=params['log_step_count_steps'],
+            train_distribute=None)
 
         self.estimator = tf.estimator.Estimator(
             self.model.model_fn,
@@ -59,11 +63,11 @@ class Runner(object):
             self.model.input_fn,
             params=self.params,
             mode=tf.estimator.ModeKeys.TRAIN)
-        train_hooks = []
+        train_hooks = [InitHook()]
         train_spec = tf.estimator.TrainSpec(
             input_fn=input_fn,
             hooks=train_hooks,
-            max_steps=1000)
+            max_steps=10000)
 
         self.estimator.train(
             train_spec.input_fn,
@@ -99,7 +103,9 @@ class Runner(object):
             mode=tf.estimator.ModeKeys.EVAL)
         train_hooks = []
         train_spec = tf.estimator.TrainSpec(
-            input_fn=train_input_fn, hooks=train_hooks)
+            input_fn=train_input_fn,
+            max_steps=1000000,
+            hooks=train_hooks)
         eval_input_fn = functools.partial(
             self.model.input_fn,
             params=self.params,

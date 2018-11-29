@@ -132,7 +132,8 @@ def build_train_dataset(params):
 
     dataset = _build_dataset(src_dataset, tag_dataset, params)
 
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
+    tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
     (src, src_len), tag = iterator.get_next()
     features = {
         "inputs": src,
@@ -161,7 +162,8 @@ def build_eval_dataset(params):
     tag_dataset = tf.data.TextLineDataset(tag_file)
 
     dataset = _build_dataset(src_dataset, tag_dataset, params)
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
+    tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
     (src, src_len), tag = iterator.get_next()
     features = {
         "inputs": src,
@@ -206,7 +208,8 @@ def build_predict_dataset(params):
             tf.constant(params['pad'], dtype=tf.string),
             0))
 
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
+    tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
     (src, src_len) = iterator.get_next()
     features = {
         "inputs": src,

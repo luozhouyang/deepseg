@@ -41,14 +41,14 @@ class RunnerTest(tf.test.TestCase):
             "shuffle": True,
             "buff_size": 1000,
             "reshuffle_each_iteration": True,
-            "repeat": 5,
-            "batch_size": 4,
+            "repeat": 2,
+            "batch_size": 2,
             "vocab_size": 18,
             "embedding_size": 256,
             "dropout": 0.5,
             "lstm_size": 256,
             "optimizer": "adam",
-            "save_ckpt_steps": 100,
+            "save_ckpt_steps": 50,
             "keep_ckpt_max": 5,
             "log_step_count_steps": 10,
             "num_tags": 5,
@@ -91,5 +91,5 @@ class RunnerTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-    tf.logging.set_verbosity(tf.logging.WARN)
+    # tf.logging.set_verbosity(tf.logging.INFO)
     tf.test.main()
