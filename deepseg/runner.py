@@ -22,10 +22,12 @@ import tensorflow as tf
 
 from . import utils
 from .bilstm_crf_model import BiLSTMCRFModel
+from .hooks import EvalSummaryHook
 from .hooks import InitHook
+from .hooks import SaveEvaluationPredictionHook
+from .hooks import TrainSummaryHook
 
 
-# TODO(luozhouyang) Add hooks
 class Runner(object):
     """Train, evaluate, predict or export the model."""
 
@@ -63,10 +65,9 @@ class Runner(object):
             self.model.input_fn,
             params=self.params,
             mode=tf.estimator.ModeKeys.TRAIN)
-        train_hooks = [InitHook()]
         train_spec = tf.estimator.TrainSpec(
             input_fn=input_fn,
-            hooks=train_hooks,
+            hooks=self._build_train_hooks(),
             max_steps=10000)
 
         self.estimator.train(
@@ -79,9 +80,8 @@ class Runner(object):
             self.model.input_fn,
             params=self.params,
             mode=tf.estimator.ModeKeys.EVAL)
-        eval_hooks = []
         eval_spec = tf.estimator.EvalSpec(
-            input_fn=input_fn, hooks=eval_hooks)
+            input_fn=input_fn, hooks=self._build_eval_hooks())
         self.estimator.evaluate(
             eval_spec.input_fn, hooks=eval_spec.hooks)
 
@@ -101,19 +101,17 @@ class Runner(object):
             self.model.input_fn,
             params=self.params,
             mode=tf.estimator.ModeKeys.EVAL)
-        train_hooks = []
         train_spec = tf.estimator.TrainSpec(
             input_fn=train_input_fn,
             max_steps=1000000,
-            hooks=train_hooks)
+            hooks=self._build_train_hooks())
         eval_input_fn = functools.partial(
             self.model.input_fn,
             params=self.params,
             mode=tf.estimator.ModeKeys.EVAL)
-        eval_hooks = []
         eval_spec = tf.estimator.EvalSpec(
             input_fn=eval_input_fn,
-            hooks=eval_hooks)
+            hooks=self._build_eval_hooks())
         tf.estimator.train_and_evaluate(
             self.estimator,
             train_spec=train_spec,
@@ -137,6 +135,19 @@ class Runner(object):
             export_dir_base=os.path.join(self.params['model_dir'], "export"),
             serving_input_receiver_fn=receiver_fn)
 
+    def _build_train_hooks(self):
+        return [InitHook(), TrainSummaryHook(self.estimator.model_dir)]
+
+    def _build_eval_hooks(self):
+        save_path = os.path.join(self.estimator.model_dir, "eval")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        output_file = os.path.join(save_path, "predictions.txt")
+        eval_hooks = [InitHook(),
+                      SaveEvaluationPredictionHook(output_file),
+                      EvalSummaryHook(self.estimator.model_dir)]
+        return eval_hooks
+
 
 def check_predictions_files(params):
     if not os.path.exists(params['predict_src_file']):
@@ -151,6 +162,8 @@ def check_vocab_files(params):
 
 
 if __name__ == "__main__":
+    tf.logging.set_verbosity(tf.logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--params_file", type=str, default="hparams.json",
                         required=True,

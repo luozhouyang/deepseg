@@ -17,8 +17,10 @@ import os
 
 import tensorflow as tf
 
-from .runner import Runner
 from . import utils
+from .runner import Runner
+
+tf.logging.set_verbosity(tf.logging.INFO)
 
 
 class RunnerTest(tf.test.TestCase):
@@ -91,5 +93,4 @@ class RunnerTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-    # tf.logging.set_verbosity(tf.logging.INFO)
     tf.test.main()

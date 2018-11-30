@@ -16,6 +16,7 @@
 import tensorflow as tf
 from tensorflow.python.ops import lookup_ops
 
+from . import collections
 from . import dataset_util
 from .abstract_model import AbstractModel
 
@@ -71,8 +72,9 @@ class BaseModel(AbstractModel):
         if mode == tf.estimator.ModeKeys.PREDICT:
             predictions = self.build_predictions(predict_ids, params)
             prediction_hooks = []
+            key = tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
             export_outputs = {
-                'export_outputs': tf.estimator.export.PredictOutput(predictions)
+                key: tf.estimator.export.PredictOutput(predictions)
             }
             return tf.estimator.EstimatorSpec(
                 mode=mode,
@@ -85,7 +87,12 @@ class BaseModel(AbstractModel):
         if mode == tf.estimator.ModeKeys.EVAL:
             metrics = self.build_eval_metrics(
                 predict_ids, labels, nwords, params)
+            predictions = self.build_predictions(predict_ids, params)
+            if predictions:
+                collections.add_dict_to_collection("predictions", predictions)
             eval_hooks = []
+            loss = self.compute_loss(logits, labels, nwords, params)
+            tf.add_to_collection(collections.EVAL_LOSS, loss)
             return tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=loss,
@@ -93,6 +100,8 @@ class BaseModel(AbstractModel):
                 evaluation_hooks=eval_hooks)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
+            loss = self.compute_loss(logits, labels, nwords, params)
+            tf.add_to_collection(collections.TRAIN_LOSS, loss)
             train_op = self.build_train_op(loss, params)
             train_hooks = []
             return tf.estimator.EstimatorSpec(
