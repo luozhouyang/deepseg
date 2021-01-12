@@ -1,12 +1,14 @@
 import unittest
 
-from deepseg.dataset import DatasetBuilder
+from deepseg.dataset import DatasetBuilder, TokenMapper, LabelMapper
 
 
 class DatasetTest(unittest.TestCase):
 
     def test_dataset(self):
-        builder = DatasetBuilder(vocab_file='testdata/sighan/vocab.txt', unk_token='[UNK]', pad_token='[PAD]')
+        token_mapper = TokenMapper(vocab_file='testdata/sighan/vocab.txt')
+        label_mapper = LabelMapper()
+        builder = DatasetBuilder(token_mapper, label_mapper)
         train_dataset = builder.build_train_dataset(
             input_files='testdata/train_small.txt',
             batch_size=2,

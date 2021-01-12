@@ -120,9 +120,9 @@ class TokenMapper:
 
 class DatasetBuilder:
 
-    def __init__(self, vocab_file, unk_token='[UNK]', pad_token='[PAD]', **kwargs):
-        self.token_mapper = TokenMapper(vocab_file, unk_token=unk_token, pad_token=pad_token, **kwargs)
-        self.label_mapper = LabelMapper()
+    def __init__(self, token_mapper, label_mapper, **kwargs):
+        self.token_mapper = token_mapper
+        self.label_mapper = label_mapper
         self.feature_pad_id = self.token_mapper.pad_id
         self.label_pad_id = self.label_mapper.label2id['O']
 
