@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 import tensorflow as tf
 
@@ -57,7 +58,7 @@ def read_train_files(input_files, sep=' '):
     features, labels = [], []
 
     def collect_fn(line):
-        tokens, tags = build_tags(line.split(sep))
+        tokens, tags = build_tags(re.split(sep, line))
         if len(tokens) != len(tags):
             return
         features.append(tokens)
@@ -67,18 +68,11 @@ def read_train_files(input_files, sep=' '):
     return features, labels
 
 
-def read_predict_files(input_files, sep=' '):
+def read_predict_files(input_files):
     features = []
 
     def collect_fn(line):
-        words = line.split(sep)
-        tokens = []
-        for w in words:
-            if len(w) == 1:
-                tokens.append(w)
-            else:
-                for c in w:
-                    tokens.append(c)
+        tokens = [w.strip() for w in line if w.strip()]
         features.append(tokens)
 
     read_files(input_files, callback=collect_fn)
@@ -136,8 +130,6 @@ class DatasetBuilder:
         features, labels = read_train_files(input_files, sep=kwargs.get('sep', ' '))
         features = [self.token_mapper.encode(x) for x in features]
         labels = [self.label_mapper.encode(x) for x in labels]
-        print(features[:2])
-        print(labels[:2])
         features = tf.ragged.constant(features, dtype=tf.int32)
         labels = tf.ragged.constant(labels, dtype=tf.int32)
         x_dataset = tf.data.Dataset.from_tensor_slices(features)
@@ -159,7 +151,7 @@ class DatasetBuilder:
         return self.build_train_dataset(input_files, batch_size, buffer_size, repeat=repeat, **kwargs)
 
     def build_predict_dataset(self, input_files, batch_size, **kwargs):
-        features = read_predict_files(input_files, sep=kwargs.get('sep', ' '))
+        features = read_predict_files(input_files)
         features = [self.token_mapper.encode(x) for x in features]
         features = tf.ragged.constant(features, dtype=tf.int32)
         dataset = tf.data.Dataset.from_tensor_slices(features)
@@ -169,5 +161,5 @@ class DatasetBuilder:
             padded_shapes=[None],
             padding_values=self.token_mapper.pad_id
         )
-        dataset = dataset.map(lambda x: (x, None))
+        # dataset = dataset.map(lambda x: (x, None))
         return dataset
