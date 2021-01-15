@@ -1,6 +1,11 @@
 testdata/icwb2-data
 testdata/sighan
 
+models
+model
+datas
+data
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
