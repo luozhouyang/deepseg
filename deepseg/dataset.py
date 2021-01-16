@@ -126,7 +126,15 @@ class DatasetBuilder:
         self.feature_pad_id = self.token_mapper.pad_id
         self.label_pad_id = self.label_mapper.label2id['O']
 
-    def build_train_dataset(self, input_files, batch_size, buffer_size, repeat=1, **kwargs):
+    def build_train_dataset(
+            self,
+            input_files,
+            batch_size=32,
+            buffer_size=1000000,
+            sequence_maxlen=None,
+            bucket_boundaries=[50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+            repeat=1,
+            **kwargs):
         features, labels = read_train_files(input_files, sep=kwargs.get('sep', ' '))
         features = [self.token_mapper.encode(x) for x in features]
         labels = [self.label_mapper.encode(x) for x in labels]
@@ -138,17 +146,46 @@ class DatasetBuilder:
         y_dataset = tf.data.Dataset.from_tensor_slices(labels)
         y_dataset = y_dataset.map(lambda y: y)
         dataset = tf.data.Dataset.zip((x_dataset, y_dataset))
+
+        if sequence_maxlen is not None and sequence_maxlen > 0:
+            dataset = dataset.filter(lambda x, y: tf.size(x) < sequence_maxlen)
+
         dataset = dataset.repeat(repeat)
         dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True)
-        dataset = dataset.padded_batch(
-            batch_size=batch_size,
+
+        bucket_batch_sizes = [batch_size] * (len(bucket_boundaries) + 1)
+        dataset = dataset.apply(tf.data.experimental.bucket_by_sequence_length(
+            element_length_func=lambda x, _: tf.size(x[0]),
+            bucket_boundaries=bucket_boundaries,
+            bucket_batch_sizes=bucket_batch_sizes,
             padded_shapes=([None], [None]),
             padding_values=(self.token_mapper.pad_id, self.label_mapper.label2id['O'])
-        )
+        ))
+
+        # dataset = dataset.padded_batch(
+        #     batch_size=batch_size,
+        #     padded_shapes=([None], [None]),
+        #     padding_values=(self.token_mapper.pad_id, self.label_mapper.label2id['O'])
+        # )
         return dataset
 
-    def build_valid_dataset(self, input_files, batch_size, buffer_size, repeat=1, **kwargs):
-        return self.build_train_dataset(input_files, batch_size, buffer_size, repeat=repeat, **kwargs)
+    def build_valid_dataset(
+            self,
+            input_files,
+            batch_size=32,
+            buffer_size=100000,
+            sequence_maxlen=None,
+            bucket_boundaries=[50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+            repeat=1,
+            **kwargs):
+        return self.build_train_dataset(
+            input_files,
+            batch_size,
+            buffer_size,
+            sequence_maxlen=sequence_maxlen,
+            bucket_boundaries=bucket_boundaries,
+            repeat=repeat,
+            **kwargs)
 
     def build_predict_dataset(self, input_files, batch_size, **kwargs):
         features = read_predict_files(input_files)
