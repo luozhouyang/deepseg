@@ -4,6 +4,11 @@ Tensorflow 2.x 实现的神经网络分词模型！一键训练&一键部署！
 
 > tensorflow 1.x的实现请切换到`tf1`分支
 
+推荐本项目使用到的两个库：
+
+* [luozhouyang/transformers-keras](https://github.com/luozhouyang/transformers-keras) 用于加载各种预训练`Bert`和`Albert`模型。
+* [luozhouyang/keras-crf](https://github.com/luozhouyang/keras-crf) 基于[tensorflow/addons](https://github.com/tensorflow/addons)之上的CRF层实现。
+
 
 ## 开发环境
 
